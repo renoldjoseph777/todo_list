@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Check, Trash2 } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
-
-// Initialize Supabase client using environment variables
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase } from '@/lib/supabase'
 
 interface Todo {
   id: number;
