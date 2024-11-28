@@ -35,7 +35,7 @@ export function TodoApp() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-bold text-center text-gray-800">Minimalist Todo Task</h1>
+        <h1 className="text-2xl font-bold text-center text-gray-800">Minimalist Todo Task Changed </h1>
         <div className="flex space-x-2">
           <Input
             placeholder="Add a new task..."
