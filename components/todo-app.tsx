@@ -1,13 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Check, Trash2 } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client using environment variables
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 interface Todo {
   id: number;
-  text: string;
+  title: string;
   completed: boolean;
 }
 
@@ -15,21 +22,84 @@ export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [input, setInput] = useState('')
 
-  const addTodo = () => {
+  // Fetch todos from Supabase on component mount
+  useEffect(() => {
+    const fetchTodos = async () => {
+      const { data, error } = await supabase.from('todos').select('*')
+      if (error) {
+        console.error('Error fetching todos:', error)
+        return
+      }
+      if (data) {
+        setTodos(data as Todo[]) // Ensure data matches the Todo type
+      }
+    }
+    fetchTodos()
+  }, [])
+
+  const addTodo = async () => {
     if (input.trim()) {
-      setTodos([...todos, { id: Date.now(), text: input.trim(), completed: false }])
-      setInput('')
+      const newTodo = { title: input.trim(), completed: false }
+
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .insert([newTodo])
+          .select()
+
+        if (error) {
+          console.error('Error inserting todo:', error)
+          return
+        }
+
+        if (data && data.length > 0) {
+          setTodos(prevTodos => [...prevTodos, data[0]])
+          setInput('')
+        }
+      } catch (error) {
+        console.error('Exception while adding todo:', error)
+      }
     }
   }
 
-  const toggleTodo = (id: number) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ))
+  const toggleTodo = async (id: number) => {
+    const todo = todos.find(t => t.id === id)
+    if (!todo) return
+
+    const updatedTodo = { ...todo, completed: !todo.completed }
+
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .update({ completed: updatedTodo.completed })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error updating todo:', error)
+        return
+      }
+
+      if (data) {
+        setTodos(todos.map(t => (t.id === id ? updatedTodo : t)))
+      }
+    } catch (error) {
+      console.error('Exception while toggling todo:', error)
+    }
   }
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter(todo => todo.id !== id))
+  const deleteTodo = async (id: number) => {
+    try {
+      const { error } = await supabase.from('todos').delete().eq('id', id)
+
+      if (error) {
+        console.error('Error deleting todo:', error)
+        return
+      }
+
+      setTodos(todos.filter(todo => todo.id !== id))
+    } catch (error) {
+      console.error('Exception while deleting todo:', error)
+    }
   }
 
   return (
@@ -72,7 +142,7 @@ export function TodoApp() {
                   todo.completed ? 'line-through text-gray-400' : 'text-gray-700'
                 }`}
               >
-                {todo.text}
+                {todo.title}
               </span>
               <Button
                 size="sm"
@@ -89,4 +159,3 @@ export function TodoApp() {
     </div>
   )
 }
-
