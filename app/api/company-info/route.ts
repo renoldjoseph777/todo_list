@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
+interface OpenAIError {
+  message: string;
+  type?: string;
+  code?: string;
+}
+
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
     console.error('OpenAI API key is not configured in environment variables')
@@ -53,12 +59,13 @@ Recent Developments: Any significant recent news or changes`
     return NextResponse.json({ 
       summary: completion.choices[0].message.content 
     })
-  } catch (error: any) {
-    console.error('OpenAI API error:', error.message || error)
+  } catch (error) {
+    const err = error as OpenAIError
+    console.error('OpenAI API error:', err.message || 'Unknown error')
     return NextResponse.json(
       { 
         error: 'Failed to fetch company information',
-        details: error.message || 'Unknown error'
+        details: err.message || 'Unknown error'
       }, 
       { status: 500 }
     )

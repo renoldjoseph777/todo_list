@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from 'lucide-react'
 
+interface APIError {
+  message: string;
+  details?: string;
+}
+
 export function CompanyInfo() {
   const [companyName, setCompanyName] = useState('')
   const [summary, setSummary] = useState('')
@@ -29,9 +34,10 @@ export function CompanyInfo() {
       }
       
       setSummary(data.summary)
-    } catch (error: any) {
-      console.error('Error:', error)
-      setSummary(`Error: ${error.message || 'Failed to fetch company information. Please try again.'}`)
+    } catch (error) {
+      const err = error as Error
+      console.error('Error:', err)
+      setSummary(`Error: ${err.message || 'Failed to fetch company information. Please try again.'}`)
     } finally {
       setLoading(false)
     }
