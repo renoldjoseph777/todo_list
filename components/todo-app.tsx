@@ -14,7 +14,7 @@ interface Todo {
 
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([])
-  const [input, setInput] = useState('')
+  const [newTodo, setNewTodo] = useState('')
 
   // Fetch todos from Supabase on component mount
   useEffect(() => {
@@ -31,14 +31,14 @@ export function TodoApp() {
     fetchTodos()
   }, [])
 
-  const addTodo = async () => {
-    if (input.trim()) {
-      const newTodo = { title: input.trim(), completed: false }
+  const handleAddTodo = async () => {
+    if (newTodo.trim()) {
+      const newTodoObj = { title: newTodo.trim(), completed: false }
 
       try {
         const { data, error } = await supabase
           .from('todos')
-          .insert([newTodo])
+          .insert([newTodoObj])
           .select()
 
         if (error) {
@@ -48,7 +48,7 @@ export function TodoApp() {
 
         if (data && data.length > 0) {
           setTodos(prevTodos => [...prevTodos, data[0]])
-          setInput('')
+          setNewTodo('')
         }
       } catch (error) {
         console.error('Exception while adding todo:', error)
@@ -56,7 +56,7 @@ export function TodoApp() {
     }
   }
 
-  const toggleTodo = async (id: number) => {
+  const handleToggleTodo = async (id: number) => {
     const todo = todos.find(t => t.id === id)
     if (!todo) return
 
@@ -81,7 +81,7 @@ export function TodoApp() {
     }
   }
 
-  const deleteTodo = async (id: number) => {
+  const handleDeleteTodo = async (id: number) => {
     try {
       const { error } = await supabase.from('todos').delete().eq('id', id)
 
@@ -97,58 +97,56 @@ export function TodoApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-bold text-center text-gray-800">Minimalist Todo </h1>
-        <div className="flex space-x-2">
-          <Input
-            placeholder="Add a new task..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addTodo()}
-            className="flex-grow"
-          />
-          <Button
-            onClick={addTodo}
-            className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 hover:opacity-90 transition-opacity"
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-center text-[#044462]">Todo List</h1>
+      <div className="flex space-x-2">
+        <Input
+          placeholder="Add a new todo..."
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAddTodo()}
+          className="flex-grow border-[#e0e0e0] focus-visible:ring-[#009845]"
+        />
+        <Button
+          onClick={handleAddTodo}
+          size="icon"
+          className="bg-[#009845] hover:bg-[#008038] text-white transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {todos.map((todo) => (
+          <div
+            key={todo.id}
+            className="flex items-center gap-2 bg-white border border-[#e0e0e0] p-3 rounded-lg shadow-sm"
           >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="space-y-2">
-          {todos.map((todo) => (
-            <div
-              key={todo.id}
-              className="flex items-center space-x-2 bg-white p-3 rounded-lg shadow-sm"
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => handleToggleTodo(todo.id)}
+              className={todo.completed ? 'text-[#009845] hover:text-[#008038] hover:bg-[#f5f5f5]' : 'text-gray-400 hover:bg-[#f5f5f5]'}
             >
-              <Button
-                size="sm"
-                variant="ghost"
-                className={`${
-                  todo.completed ? 'text-green-500' : 'text-gray-400'
-                } hover:text-green-600 hover:bg-green-50`}
-                onClick={() => toggleTodo(todo.id)}
-              >
-                <Check className="h-5 w-5" />
-              </Button>
-              <span
-                className={`flex-grow ${
-                  todo.completed ? 'line-through text-gray-400' : 'text-gray-700'
-                }`}
-              >
-                {todo.title}
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-gray-400 hover:text-red-600 hover:bg-red-50"
-                onClick={() => deleteTodo(todo.id)}
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </div>
-          ))}
-        </div>
+              <Check className="h-4 w-4" />
+            </Button>
+            <span
+              className={`flex-grow ${
+                todo.completed ? 'line-through text-gray-400' : 'text-[#333333]'
+              }`}
+            >
+              {todo.title}
+            </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => handleDeleteTodo(todo.id)}
+              className="text-[#dc2626] hover:text-[#b91c1c] hover:bg-[#f5f5f5]"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
       </div>
     </div>
   )
