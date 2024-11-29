@@ -30,42 +30,74 @@ export async function POST(req: Request) {
       )
     }
 
+    console.log('Requesting data for:', companyName); // Debug log
+
     const completion = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are a business analyst providing comprehensive company information. For each company, provide information in the following format:
-
-Overview: Brief introduction of the company
-Products/Services: Main offerings
-Market Position: Current standing in the industry
-Key Strengths: Notable advantages or unique selling points
-Recent Developments: Any significant recent news or changes`
+          content: `You are a financial analyst providing verified company information. Only provide information that you can verify from reliable sources. If specific financial data is not available or uncertain, indicate that in the response. Do not generate or estimate numbers.`
         },
         {
           role: "user",
-          content: `Please provide detailed information about ${companyName}.`
+          content: `Please provide verified financial information for ${companyName} in JSON format. Include:
+
+1. The most recent verified quarterly revenue figures (only if publicly reported)
+2. The most recent verified quarterly profit figures (only if publicly reported)
+3. A factual summary of the company's current business state and market position
+
+For any data point that cannot be verified, use null.
+
+Format the response as a JSON object with the following structure:
+{
+  "revenue": {
+    "data": [numbers in millions] or null,
+    "period": ["Q4 2023", ...] or null,
+    "source": "Source of data (e.g., Latest 10-Q filing, Annual Report)" or null
+  },
+  "profit": {
+    "data": [numbers in millions] or null,
+    "period": ["Q4 2023", ...] or null,
+    "source": "Source of data" or null
+  },
+  "summary": "Verified factual summary",
+  "dataAvailability": "Public|Private|Limited",
+  "lastUpdated": "Date of most recent data"
+}`
         }
       ],
-      model: "gpt-3.5-turbo",
-      temperature: 0.7,
-      max_tokens: 500,
+      model: "gpt-3.5-turbo",  // Changed to gpt-3.5-turbo as gpt-4-turbo-preview might not be available
+      temperature: 0.3,
+      max_tokens: 1000,
     })
+
+    console.log('OpenAI Response:', completion.choices[0]?.message?.content); // Debug log
 
     if (!completion.choices[0]?.message?.content) {
       throw new Error('No response from OpenAI')
     }
 
-    return NextResponse.json({ 
-      summary: completion.choices[0].message.content 
-    })
+    try {
+      const financialData = JSON.parse(completion.choices[0].message.content)
+      return NextResponse.json({ financials: financialData })
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Raw Content:', completion.choices[0].message.content);
+      return NextResponse.json(
+        { error: 'Invalid response format from OpenAI' },
+        { status: 500 }
+      )
+    }
+
   } catch (error: unknown) {
     const err = error as OpenAIError
-    console.error('OpenAI API error:', err.message || 'Unknown error')
+    console.error('OpenAI API error:', err);
     return NextResponse.json(
       { 
         error: 'Failed to fetch company information',
-        details: err.message || 'Unknown error'
+        details: err.message || 'Unknown error',
+        type: err.type,
+        code: err.code
       }, 
       { status: 500 }
     )

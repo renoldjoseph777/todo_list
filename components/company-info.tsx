@@ -1,25 +1,38 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search } from 'lucide-react'
+import React, { useState } from 'react';
+import { Button, Input, Card, Typography, Space, Spin, message, Alert } from 'antd';
+import { DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import jsPDF from 'jspdf';
+import { FinancialCharts } from './financial-charts';
 
-interface APIResponse {
-  error?: string;
-  details?: string;
-  summary?: string;
+const { Text, Title, Paragraph } = Typography;
+
+interface FinancialData {
+  revenue: {
+    data: number[] | null;
+    period: string[] | null;
+    source: string | null;
+  };
+  profit: {
+    data: number[] | null;
+    period: string[] | null;
+    source: string | null;
+  };
+  summary: string;
+  dataAvailability: string;
+  lastUpdated: string;
 }
 
-export function CompanyInfo() {
-  const [companyName, setCompanyName] = useState('')
-  const [summary, setSummary] = useState('')
-  const [loading, setLoading] = useState(false)
+export default function CompanyInfo() {
+  const [companyName, setCompanyName] = useState('');
+  const [financialData, setFinancialData] = useState<FinancialData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const getCompanySummary = async () => {
-    if (!companyName.trim()) return
-
-    setLoading(true)
+  const fetchCompanyInfo = async () => {
+    setLoading(true);
+    setError('');
     try {
       const response = await fetch('/api/company-info', {
         method: 'POST',
@@ -27,87 +40,144 @@ export function CompanyInfo() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ companyName }),
-      })
+      });
       
-      const data: APIResponse = await response.json()
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to fetch company information')
+        throw new Error(data.error || 'Failed to fetch company information');
       }
-      
-      setSummary(data.summary || '')
-    } catch (error: unknown) {
-      const err = error as Error
-      console.error('Error:', err)
-      setSummary(`Error: ${err.message || 'Failed to fetch company information. Please try again.'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const formatSummary = (text: string) => {
-    return text.split('\n').map((line, index) => {
-      if (line.includes(':')) {
-        const [title, content] = line.split(':')
-        return (
-          <div key={index} className="mb-4">
-            <h3 className="text-lg font-semibold text-[#044462] mb-2">{title.trim()}</h3>
-            <p className="text-[#333333] leading-relaxed">{content.trim()}</p>
-          </div>
-        )
+      console.log('API Response:', data);
+      
+      if (!data.financials) {
+        throw new Error('No financial data received');
       }
-      return line.trim() && (
-        <p key={index} className="text-[#333333] leading-relaxed mb-4">{line}</p>
-      )
-    })
-  }
+
+      setFinancialData(data.financials);
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      message.error('Failed to fetch company information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadPDF = () => {
+    if (!financialData) return;
+
+    const pdf = new jsPDF();
+    
+    pdf.setFontSize(16);
+    pdf.text(companyName.toUpperCase(), 15, 20);
+    
+    pdf.setFontSize(12);
+    const splitText = pdf.splitTextToSize(financialData.summary, 180);
+    pdf.text(splitText, 15, 40);
+    
+    pdf.save(`${companyName}-financials.pdf`);
+  };
+
+  const renderFinancialSection = () => {
+    if (!financialData) return null;
+
+    const hasFinancialData = 
+      financialData.revenue.data && 
+      financialData.profit.data && 
+      financialData.revenue.period;
+
+    return (
+      <Card 
+        title={<span className="text-[#044462] font-bold">Financial Analysis</span>}
+        className="shadow-sm"
+        headStyle={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
+      >
+        {hasFinancialData ? (
+          <FinancialCharts 
+            data={{
+              revenue: financialData.revenue.data || [],
+              profit: financialData.profit.data || [],
+              dates: financialData.revenue.period || []
+            }} 
+          />
+        ) : (
+          <Alert
+            message="Financial Data Not Available"
+            description={
+              <div className="space-y-2">
+                <p>Financial data is not publicly available for this company.</p>
+                <p>Data Availability: {financialData.dataAvailability}</p>
+                {financialData.revenue.source && (
+                  <p>Source: {financialData.revenue.source}</p>
+                )}
+              </div>
+            }
+            type="info"
+            showIcon
+            icon={<InfoCircleOutlined className="text-[#044462]" />}
+            className="bg-[#f8f9fa]"
+          />
+        )}
+      </Card>
+    );
+  };
 
   return (
-    <div className="h-full p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-center text-[#044462] mb-8">Company Information</h1>
-        <div className="flex space-x-2 mb-8">
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Card 
+        title={<span className="text-[#044462] font-bold">Company Research</span>}
+        className="shadow-sm"
+        headStyle={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
           <Input
-            placeholder="Enter company name..."
+            placeholder="Enter company name"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && getCompanySummary()}
-            className="flex-grow border-[#e0e0e0] focus-visible:ring-[#009845] text-lg py-6"
+            onPressEnter={fetchCompanyInfo}
+            className="border-[#e0e0e0] focus:border-[#009845] focus-visible:ring-[#009845]"
           />
-          <Button
-            onClick={getCompanySummary}
-            disabled={loading}
-            className="bg-[#009845] hover:bg-[#008038] text-white transition-colors px-6"
+          <Button 
+            type="primary" 
+            onClick={fetchCompanyInfo} 
+            loading={loading}
+            className="bg-[#009845] hover:bg-[#008038] border-none"
           >
-            <Search className="h-5 w-5 mr-2" />
-            {loading ? 'Loading...' : 'Search'}
+            Get Information
           </Button>
-        </div>
+        </Space>
+      </Card>
 
-        {loading && (
-          <div className="bg-white border border-[#e0e0e0] p-8 rounded-lg shadow-sm">
-            <div className="animate-pulse space-y-6">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="space-y-3">
-                  <div className="h-4 bg-[#f5f5f5] rounded w-1/4"></div>
-                  <div className="h-4 bg-[#f5f5f5] rounded w-full"></div>
-                  <div className="h-4 bg-[#f5f5f5] rounded w-5/6"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {loading && <Spin size="large" />}
+      
+      {error && <Text type="danger">{error}</Text>}
+      
+      {financialData && (
+        <>
+          <Card className="shadow-sm">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={3} className="text-[#044462] mb-0">{companyName}</Title>
+              <Paragraph className="text-[#666666] text-lg mt-2">
+                {financialData.summary}
+              </Paragraph>
+              <div className="text-sm text-[#666666]">
+                Last Updated: {financialData.lastUpdated}
+              </div>
+              <Button 
+                type="primary" 
+                icon={<DownloadOutlined />} 
+                onClick={downloadPDF}
+                className="bg-[#009845] hover:bg-[#008038] border-none mt-4"
+              >
+                Download Report
+              </Button>
+            </Space>
+          </Card>
 
-        {!loading && summary && (
-          <div className="bg-white border border-[#e0e0e0] p-8 rounded-lg shadow-sm">
-            <h2 className="text-2xl font-semibold mb-6 text-[#044462] border-b border-[#e0e0e0] pb-4">
-              {companyName}
-            </h2>
-            <div className="space-y-2">
-              {formatSummary(summary)}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+          {renderFinancialSection()}
+        </>
+      )}
+    </Space>
+  );
 } 
