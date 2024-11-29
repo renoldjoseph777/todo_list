@@ -7,6 +7,12 @@ interface OpenAIError {
   code?: string;
 }
 
+interface APIResponse {
+  error?: string;
+  details?: string;
+  summary?: string;
+}
+
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
     console.error('OpenAI API key is not configured in environment variables')
@@ -59,7 +65,7 @@ Recent Developments: Any significant recent news or changes`
     return NextResponse.json({ 
       summary: completion.choices[0].message.content 
     })
-  } catch (error) {
+  } catch (error: unknown) {
     const err = error as OpenAIError
     console.error('OpenAI API error:', err.message || 'Unknown error')
     return NextResponse.json(

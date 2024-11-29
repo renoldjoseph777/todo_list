@@ -10,6 +10,12 @@ interface APIError {
   details?: string;
 }
 
+interface APIResponse {
+  error?: string;
+  details?: string;
+  summary?: string;
+}
+
 export function CompanyInfo() {
   const [companyName, setCompanyName] = useState('')
   const [summary, setSummary] = useState('')
@@ -28,13 +34,13 @@ export function CompanyInfo() {
         body: JSON.stringify({ companyName }),
       })
       
-      const data = await response.json()
+      const data: APIResponse = await response.json()
       if (!response.ok) {
         throw new Error(data.details || data.error || 'Failed to fetch company information')
       }
       
-      setSummary(data.summary)
-    } catch (error) {
+      setSummary(data.summary || '')
+    } catch (error: unknown) {
       const err = error as Error
       console.error('Error:', err)
       setSummary(`Error: ${err.message || 'Failed to fetch company information. Please try again.'}`)
