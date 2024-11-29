@@ -5,11 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from 'lucide-react'
 
-interface APIError {
-  message: string;
-  details?: string;
-}
-
 interface APIResponse {
   error?: string;
   details?: string;

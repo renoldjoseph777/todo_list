@@ -7,12 +7,6 @@ interface OpenAIError {
   code?: string;
 }
 
-interface APIResponse {
-  error?: string;
-  details?: string;
-  summary?: string;
-}
-
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
     console.error('OpenAI API key is not configured in environment variables')
